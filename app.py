@@ -9,6 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
+import uuid
+
 BASE = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("DATA_DIR", BASE / "data"))
 UPLOADS = DATA / "uploads"
@@ -136,11 +138,13 @@ async def upload(request: Request, file: UploadFile = File(...)):
     user = current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
-    original = file.filename or "upload.bin"
-    stored = original
+
+    raw = (file.filename or "upload.bin").replace("\\", "/")
+    original = os.path.basename(raw) or "upload.bin"
+    stored = f"{uuid.uuid4().hex}_{original}"   # unique, no user-controlled path
     dest = UPLOADS / stored
-    dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(await file.read())
+
     with db() as conn:
         conn.execute(
             "INSERT INTO files (user_id, stored_name, original_name) VALUES (?, ?, ?)",
@@ -150,11 +154,26 @@ async def upload(request: Request, file: UploadFile = File(...)):
 
 
 @app.get("/download")
-def download(name: str):
-    path = os.path.join(str(UPLOADS), name)
-    if not os.path.isfile(path):
+def download(request: Request, name: str):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    with db() as conn:
+        row = conn.execute(
+            "SELECT * FROM files WHERE (stored_name = ? OR original_name = ?) "
+            "AND user_id = ? ORDER BY id DESC LIMIT 1",
+            (name, name, user["id"]),
+        ).fetchone()
+    if not row:
         return HTMLResponse("That file is not in the drop.", status_code=404)
-    return FileResponse(path, filename=os.path.basename(name))
+
+    base = UPLOADS.resolve()
+    path = (base / row["stored_name"]).resolve()
+    if not path.is_relative_to(base) or not path.is_file():
+        return HTMLResponse("That file is not in the drop.", status_code=404)
+
+    return FileResponse(path, filename=row["original_name"])
 
 
 @app.get("/health")
