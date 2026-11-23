@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DropOff{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <a class="brand" href="/">
+        <span class="mark">Do</span>
+        <span><strong>DropOff</strong><em>Lab submissions for one section</em></span>
+      </a>
+      <nav>
+        {% if user %}
+          <span>{{ user.display_name }}</span>
+          <form method="post" action="/logout"><button type="submit">Sign out</button></form>
+        {% else %}
+          <a class="btn" href="/login">Sign in</a>
+        {% endif %}
+      </nav>
+    </header>
+    <main>{% block body %}{% endblock %}</main>
+    <footer>DropOff is unofficial. Official grades still live with the instructor.</footer>
+  </div>
+</body>
+</html>

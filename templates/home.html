@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="hero">
+  <h1>Drop the lab. Keep the filename.</h1>
+  <p class="lede">One folder for the section. Upload the file you want the TA to see. Download anything you have already turned in.</p>
+</section>
+{% if not user %}
+  <p class="lede"><a href="/login">Sign in</a> to open your drop. Demo accounts are in the README.</p>
+{% else %}
+  <form class="upload" method="post" action="/upload" enctype="multipart/form-data">
+    <label>File <input type="file" name="file" required></label>
+    <button type="submit">Upload</button>
+  </form>
+  <ul class="list">
+    {% for f in files %}
+      <li>
+        <a href="/download?name={{ f.stored_name }}">{{ f.original_name }}</a>
+        <span>{{ f.uploaded_at }}</span>
+      </li>
+    {% else %}
+      <li class="lede">Nothing in your drop yet.</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
